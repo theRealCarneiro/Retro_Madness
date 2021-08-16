@@ -17,9 +17,11 @@ public class EnemyBehaviour : MonoBehaviour
     {
         bool isGrounded = GameObject.FindGameObjectWithTag("Player").GetComponent<MarioController>().isGrounded;
         bool spin = GameObject.FindGameObjectWithTag("Player").GetComponent<MarioController>().spin;
-        if(col.collider.tag == "Player" && (isGrounded == false || spin == true))
+        bool charge = GameObject.FindGameObjectWithTag("Player").GetComponent<MarioController>().charge;
+        if(col.collider.tag == "Player" && (isGrounded == false || spin == true || charge == true))
         {
             dead = true;
+            GetComponent<AudioSource>().Play();
         }
     } 
 

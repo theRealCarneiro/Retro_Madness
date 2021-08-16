@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(CapsuleCollider2D))]
@@ -15,10 +16,14 @@ public class MarioController : MonoBehaviour
     public float Acceleration = 10f;
     public float Deceleration = 10f;
     public float gravityScale = 1.5f;
+    public AudioSource dash;
+    public AudioSource jump;
+    public AudioSource stop;
     public bool spin = false;
     public bool charge = false;
     public Camera mainCamera;
     public Animator animator;
+    public Text deathText;
 
     bool facingRight = true;
     float moveDirection = 1;
@@ -30,20 +35,30 @@ public class MarioController : MonoBehaviour
     Transform t;
     bool lookDown = false;
     bool cameraLock;
+    public bool isOver = false;
 
     void OnCollisionEnter2D(Collision2D col)
     {
         if(col.collider.tag == "Buraco" )
         {
             dead = true;
-            Application.LoadLevel (Application.loadedLevel);
+            GameObject.FindGameObjectWithTag("DeadIndicator").GetComponent<SpriteRenderer>().enabled = true;
+            deathText.enabled = true;
+            Time.timeScale = 0;
+            //Application.LoadLevel (Application.loadedLevel);
         }
-        else if(col.collider.tag == "Enemy" && isGrounded == true && spin == false){
+        else if(col.collider.tag == "Enemy" && isGrounded == true && spin == false && charge == false){
             dead = true;
-            Application.LoadLevel (Application.loadedLevel);
+            GameObject.FindGameObjectWithTag("DeadIndicator").GetComponent<SpriteRenderer>().enabled = true;
+            deathText.enabled = true;
+            Time.timeScale = 0;
+            //Application.LoadLevel (Application.loadedLevel);
         }
         else if(col.collider.tag == "Enemy" && (isGrounded == false || spin == true)){
             r2d.velocity = new Vector2(r2d.velocity.x, jumpHeight/1.5f);
+        }
+        else if(col.collider.tag == "PlacaFim"){
+            isOver = true;
         }
     } 
 
@@ -67,7 +82,24 @@ public class MarioController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (isGrounded)
+        if(dead){
+            if(Input.GetKeyDown(KeyCode.R)){
+                GameObject.FindGameObjectWithTag("DeadIndicator").GetComponent<SpriteRenderer>().enabled = false;
+                Time.timeScale = 1;
+                Application.LoadLevel (Application.loadedLevel);
+            }
+            
+        }
+
+        if(isOver){
+            Speed = 0f;
+            animator.Play("Victory");
+            deathText.enabled = true;
+            if(Input.GetKeyDown(KeyCode.R))
+                Application.LoadLevel (Application.loadedLevel);
+        }
+
+        if (isGrounded && !isOver)
         {
             if(dead)
                 animator.Play("Dying");
@@ -84,7 +116,7 @@ public class MarioController : MonoBehaviour
             else if(Speed > MaxSpeed * 0.95f || Speed < - MaxSpeed * 0.95f)
                 animator.Play("Run");
         }
-        else
+        else if(!isOver)
             animator.Play("Roll");
         
 
@@ -105,7 +137,7 @@ public class MarioController : MonoBehaviour
         //}
 
 
-        if(Input.GetKeyUp(KeyCode.DownArrow)){
+        if(Input.GetKeyUp(KeyCode.DownArrow) && !isOver){
             if(charge && (Speed < 0.1f && Speed > -0.1f)){
                 charge = false;
                 spin = true;
@@ -114,7 +146,7 @@ public class MarioController : MonoBehaviour
             lookDown = false;
         }
 
-        if(spin){
+        if(spin  && !isOver){
             RaycastHit2D hit;
             if(moveDirection == 1)
                 hit = Physics2D.Raycast(transform.position, Vector2.right);
@@ -136,19 +168,22 @@ public class MarioController : MonoBehaviour
         }
 
         // Jumping
-        if ((Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.D)) && isGrounded && dead == false)
+        if ((Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.D)) && isGrounded && dead == false && !isOver)
         {
             if(lookDown == false){
+
+                jump.Play();
                 r2d.velocity = new Vector2(r2d.velocity.x, jumpHeight);
             } 
             else if(!spin){
                 //spin = true;
+                dash.Play();
                 charge = true;
             }
         }
 
         // Movement controls
-        if(!dead && !lookDown)
+        if(!dead && !lookDown && !isOver)
         {
             if (Input.GetKey(KeyCode.LeftArrow)){
                 RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.left);
@@ -156,10 +191,12 @@ public class MarioController : MonoBehaviour
                 if (hit.collider != null && hit.collider.tag != "Level")
                     distance = Mathf.Abs(hit.point.x - transform.position.x);
                 if(distance > 0.1){
-                    moveDirection = -1;
+                    if(!spin) moveDirection = -1;
                     float acc = Acceleration;
-                    if(Speed > 0f)
+                    if(Speed > 0f){
+                        //stop.PlayOneShot();
                         acc = Deceleration;
+                    }
                     Speed = Speed - (acc * Time.deltaTime);
                 }else Speed = 0;
             } else if (Input.GetKey(KeyCode.RightArrow)){ 
@@ -168,7 +205,7 @@ public class MarioController : MonoBehaviour
                 if (hit.collider != null && hit.collider.tag != "Level")
                     distance = Mathf.Abs(hit.point.x - transform.position.x);
                 if(distance > 0.1){
-                    moveDirection = 1;
+                    if(!spin) moveDirection = 1;
                     float acc = Acceleration;
                     if(Speed < 0f)
                         acc = Deceleration;
@@ -186,7 +223,7 @@ public class MarioController : MonoBehaviour
         
 
         // Change facing direction
-        if (moveDirection != 0)
+        if (moveDirection != 0 && !spin)
         {
             if (moveDirection > 0 && !facingRight)
             {
