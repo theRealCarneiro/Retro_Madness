@@ -36,6 +36,9 @@ public class MarioController : MonoBehaviour
             dead = true;
             Application.LoadLevel (Application.loadedLevel);
         }
+        else if(col.collider.tag == "Enemy" && (isGrounded == false || spin == true)){
+            r2d.velocity = new Vector2(r2d.velocity.x, jumpHeight/2);
+        }
     } 
 
     // Use this for initialization
@@ -138,8 +141,14 @@ public class MarioController : MonoBehaviour
 
         // Camera follow
         if (mainCamera)
-        {
-            mainCamera.transform.position = new Vector3(t.position.x, cameraPos.y, cameraPos.z);
+        {   
+            float xpos;
+            if(transform.position.x > 26f){
+                xpos = 26f;
+            }else if(transform.position.x < -3.834f){
+                xpos = -3.834f;
+            } else xpos = t.position.x;
+            mainCamera.transform.position = new Vector3(xpos, cameraPos.y, cameraPos.z);
         }
     }
 
